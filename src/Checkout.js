@@ -1,8 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import PubSub from 'pubsub-js'; // Para escutar os eventos do cart
 import './Checkout.css'; // Importe o arquivo CSS para estilização
-import  Parcel from 'single-spa-react/parcel'
 
 const Checkout = () => {
+    const [cartItems, setCartItems] = useState([]); // Estado para os itens no carrinho
+
+    // Inscrição no evento de atualização do carrinho
+    useEffect(() => {
+        const cartSubscription = PubSub.subscribe('cartUpdated', (msg, data) => {
+            setCartItems(data); // Atualiza os itens do carrinho com os dados recebidos
+        });
+
+        // Limpeza ao desmontar o componente
+        return () => {
+            PubSub.unsubscribe(cartSubscription);
+        };
+    }, []);
+
     const user = {
         email: 'john.doe@example.com',
         phone: '123-456-7890',
@@ -13,6 +27,9 @@ const Checkout = () => {
         setPaymentMethod(event.target.value);
     };
 
+    const calculateTotal = () => {
+        return cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
+    };
 
     return (
         <div className='checkout-container'>
@@ -50,14 +67,36 @@ const Checkout = () => {
                     </label>
                 </div>
             </section>
-            <section>
-            <div>
-                <Parcel config={() => System.import('@experian/exp-cart-mf')} />
-            </div>
-                </section>
+            <section className='checkout-section checkout-cart'>
+                <h2>Shopping Cart</h2>
+                {cartItems.length > 0 ? (
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Price</th>
+                                <th>Quantity</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {cartItems.map((item) => (
+                                <tr key={item.id}>
+                                    <td>{item.name}</td>
+                                    <td>{item.price}</td>
+                                    <td>{item.quantity}</td>
+                                    <td>{item.price * item.quantity}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                ) : (
+                    <p>Your cart is empty.</p>
+                )}
+                <p>Total: {calculateTotal()}</p>
+            </section>
         </div>
     );
 };
 
 export default Checkout;
-
